@@ -9,7 +9,10 @@
 	"compatibility_date": "2025-04-18",
 	"observability": {
 		"enabled": true
-	}
+	},
+
+	"minify": false // Disable minification
+
 	/**
 	 * Smart Placement
 	 * Docs: https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
