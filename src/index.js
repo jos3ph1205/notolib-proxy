@@ -1,29 +1,45 @@
-addEventListener('fetch', event => {
-	event.respondWith(handleRequest(event.request))
-})
+export default {
+	async fetch(request) {
+		const origin = request.headers.get("Origin") || "";
 
-async function handleRequest(request) {
-	const jsUrl = 'https://yourcdn.com/path/to/your/script.js';  // URL to your JS file
+		if (request.method === "OPTIONS") {
+			return new Response(null, {
+				status: 204,
+				headers: {
+					"Access-Control-Allow-Origin": origin,
+					"Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+					"Access-Control-Allow-Headers": request.headers.get("Access-Control-Request-Headers") || "*",
+					"Access-Control-Allow-Credentials": "true"
+				}
+			});
+		}
 
-	// Fetch the external JS file
-	const jsResponse = await fetch(jsUrl);
+		const { searchParams } = new URL(request.url);
+		const targetUrl = searchParams.get("url");
 
-	// Check if the fetch was successful
-	if (!jsResponse.ok) {
-		return new Response('JS file not found', { status: 404 });
+		if (!targetUrl) {
+			return new Response("Missing `url` parameter", { status: 400 });
+		}
+
+		try {
+			const jsRes = await fetch(targetUrl);
+
+			if (!jsRes.ok) {
+				return new Response("Failed to fetch target JS file", { status: 502 });
+			}
+
+			const headers = {
+				"Content-Type": "application/javascript",
+				"Access-Control-Allow-Origin": origin,
+				"Access-Control-Allow-Credentials": "true",
+				"Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+				"Access-Control-Allow-Headers": "*",
+				"Cache-Control": "no-cache, no-store, must-revalidate"
+			};
+
+			return new Response(await jsRes.text(), { headers });
+		} catch (err) {
+			return new Response("Error fetching script: " + err.message, { status: 500 });
+		}
 	}
-
-	// Clone the response so we can add headers
-	const clonedResponse = jsResponse.clone();
-
-	// Set custom headers
-	const headers = clonedResponse.headers;
-	headers.set('Content-Type', 'application/javascript');
-	headers.set('Cache-Control', 'max-age=3600');  // Adjust as necessary
-	headers.set('X-Custom-Header', 'SomeCustomValue'); // Add any other headers
-
-	// Return the JS file with custom headers
-	return new Response(clonedResponse.body, {
-		headers: headers
-	});
-}
+};
